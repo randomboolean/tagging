@@ -1,4 +1,4 @@
-# Project Tagging Scripts
+# Tagging
 
 This repository contains a set of Bash functions to help you organize and search for your projects using tags.
 
