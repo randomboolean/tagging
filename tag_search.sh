@@ -9,7 +9,12 @@ ptag() {
     if [[ -z "$1" ]]; then
         echo "Usage: ptag <tag>"
         echo "Available tags:"
-        find ~/Projects -maxdepth 2 -name ".tags" -exec cat {} \; | sort -u | grep -v '^$'
+        find ~/Projects -maxdepth 2 -name ".tags" -exec awk '1' {} + | \
+        sed 's/%$//' | \
+        sed 's/^[[:space:]]*//' | \
+        sed 's/[[:space:]]*$//' | \
+        grep -v '^$' | \
+        sort -u
         return
     fi
     
