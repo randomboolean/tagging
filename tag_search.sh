@@ -67,3 +67,58 @@ ptag-and() {
         fi
     done
 }
+
+# Helper function to get all available tags for completion
+_get_available_tags() {
+    find ~/Projects -maxdepth 2 -name ".tags" -exec awk '1' {} + 2>/dev/null | \
+    sed 's/%$//' | \
+    sed 's/^[[:space:]]*//' | \
+    sed 's/[[:space:]]*$//' | \
+    grep -v '^$' | \
+    sort -u
+}
+
+# Bash completion
+if [[ -n "${BASH_VERSION:-}" ]]; then
+    _ptag_completion() {
+        local cur="${COMP_WORDS[COMP_CWORD]}"
+        COMPREPLY=($(compgen -W "$(_get_available_tags)" -- "$cur"))
+    }
+    
+    _ptag_and_completion() {
+        local cur="${COMP_WORDS[COMP_CWORD]}"
+        local used_tags="${COMP_WORDS[@]:1:$((COMP_CWORD-1))}"
+        local available_tags=$(_get_available_tags)
+        
+        # Filter out already used tags
+        local remaining_tags=""
+        for tag in $available_tags; do
+            if [[ ! " $used_tags " =~ " $tag " ]]; then
+                remaining_tags="$remaining_tags $tag"
+            fi
+        done
+        
+        COMPREPLY=($(compgen -W "$remaining_tags" -- "$cur"))
+    }
+    
+    complete -F _ptag_completion ptag
+    complete -F _ptag_and_completion ptag-and
+fi
+
+# Zsh completion
+if [[ -n "${ZSH_VERSION:-}" ]]; then
+    _ptag_zsh() {
+        local -a tags
+        tags=(${(f)"$(_get_available_tags)"})
+        _describe 'tags' tags
+    }
+    
+    _ptag_and_zsh() {
+        local -a tags
+        tags=(${(f)"$(_get_available_tags)"})
+        _describe 'tags' tags
+    }
+    
+    compdef _ptag_zsh ptag
+    compdef _ptag_and_zsh ptag-and
+fi
