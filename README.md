@@ -71,17 +71,20 @@ This will list all projects that are tagged with *both* `web` and `javascript`.
 
 ## Autocompletion
 
-The scripts include tab completion support for both bash and zsh. Once you've sourced the script, you can use tab completion to see available tags:
+The scripts include intelligent tab completion support for both bash and zsh. Once you've sourced the script, you can use tab completion to see available tags:
 
 - Type `ptag ` and press **Tab** to see all available tags
 - Type `ptag web` and press **Tab** to complete if 'web' is a valid tag
-- Type `ptag-and web ` and press **Tab** to see remaining tags (excludes already selected ones)
+- Type `ptag-and web ` and press **Tab** to see only tags that appear in projects that also have 'web'
 
-The completion works by reading your `.tags` files in real-time, so it will always show current available tags.
+The completion is intelligent for `ptag-and` - it only shows tags that would actually return results when combined with the already specified tags. This prevents suggesting combinations that would return zero results.
 
 **Example autocompletion usage:**
 
 ```bash
-ptag w<Tab>           # Shows: web, warp10, etc.
-ptag-and web j<Tab>   # Shows: javascript, java, etc. (excluding 'web')
-``` 
+ptag w<Tab>                    # Shows: web, warp10, etc.
+ptag-and web <Tab>             # Shows only tags that exist in projects that also have 'web'
+ptag-and web javascript <Tab>  # Shows only tags in projects that have both 'web' AND 'javascript'
+```
+
+The completion works by reading your `.tags` files in real-time, so it will always show current available tags and valid combinations. 

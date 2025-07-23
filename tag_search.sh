@@ -87,16 +87,58 @@ if [[ -n "${BASH_VERSION:-}" ]]; then
     
     _ptag_and_completion() {
         local cur="${COMP_WORDS[COMP_CWORD]}"
-        local used_tags="${COMP_WORDS[@]:1:$((COMP_CWORD-1))}"
-        local available_tags=$(_get_available_tags)
+        local used_tags=(${COMP_WORDS[@]:1:$((COMP_CWORD-1))})
+        
+        # If no tags specified yet, show all tags
+        if [[ ${#used_tags[@]} -eq 0 ]]; then
+            COMPREPLY=($(compgen -W "$(_get_available_tags)" -- "$cur"))
+            return
+        fi
+        
+        # Find projects that have ALL the already specified tags
+        local matching_projects=""
+        find ~/Projects -maxdepth 2 -name ".tags" | while read -r file; do
+            local has_all_tags=true
+            for tag in "${used_tags[@]}"; do
+                if ! grep -q "^$tag$" "$file" 2>/dev/null; then
+                    has_all_tags=false
+                    break
+                fi
+            done
+            
+            if $has_all_tags; then
+                echo "$file"
+            fi
+        done > /tmp/ptag_matching_projects_$$
+        
+        # Get all tags from those matching projects
+        local candidate_tags=""
+        if [[ -s /tmp/ptag_matching_projects_$$ ]]; then
+            candidate_tags=$(cat /tmp/ptag_matching_projects_$$ | xargs -I{} awk '1' {} 2>/dev/null | \
+                sed 's/%$//' | \
+                sed 's/^[[:space:]]*//' | \
+                sed 's/[[:space:]]*$//' | \
+                grep -v '^$' | \
+                sort -u)
+        fi
         
         # Filter out already used tags
         local remaining_tags=""
-        for tag in $available_tags; do
-            if [[ ! " $used_tags " =~ " $tag " ]]; then
+        for tag in $candidate_tags; do
+            local already_used=false
+            for used_tag in "${used_tags[@]}"; do
+                if [[ "$tag" == "$used_tag" ]]; then
+                    already_used=true
+                    break
+                fi
+            done
+            if [[ "$already_used" == false ]]; then
                 remaining_tags="$remaining_tags $tag"
             fi
         done
+        
+        # Clean up temp file
+        rm -f /tmp/ptag_matching_projects_$$
         
         COMPREPLY=($(compgen -W "$remaining_tags" -- "$cur"))
     }
@@ -115,8 +157,61 @@ if [[ -n "${ZSH_VERSION:-}" ]]; then
     
     _ptag_and_zsh() {
         local -a tags
-        tags=(${(f)"$(_get_available_tags)"})
-        _describe 'tags' tags
+        local used_tags=(${words[2,-2]})
+        
+        # If no tags specified yet, show all tags
+        if [[ ${#used_tags[@]} -eq 0 ]]; then
+            tags=(${(f)"$(_get_available_tags)"})
+            _describe 'tags' tags
+            return
+        fi
+        
+        # Find projects that have ALL the already specified tags
+        local matching_projects_file="/tmp/ptag_matching_projects_zsh_$$"
+        find ~/Projects -maxdepth 2 -name ".tags" | while read -r file; do
+            local has_all_tags=true
+            for tag in "${used_tags[@]}"; do
+                if ! grep -q "^$tag$" "$file" 2>/dev/null; then
+                    has_all_tags=false
+                    break
+                fi
+            done
+            
+            if $has_all_tags; then
+                echo "$file"
+            fi
+        done > "$matching_projects_file"
+        
+        # Get all tags from those matching projects
+        local candidate_tags
+        if [[ -s "$matching_projects_file" ]]; then
+            candidate_tags=$(cat "$matching_projects_file" | xargs -I{} awk '1' {} 2>/dev/null | \
+                sed 's/%$//' | \
+                sed 's/^[[:space:]]*//' | \
+                sed 's/[[:space:]]*$//' | \
+                grep -v '^$' | \
+                sort -u)
+        fi
+        
+        # Filter out already used tags
+        local -a remaining_tags
+        for tag in ${(f)candidate_tags}; do
+            local already_used=false
+            for used_tag in "${used_tags[@]}"; do
+                if [[ "$tag" == "$used_tag" ]]; then
+                    already_used=true
+                    break
+                fi
+            done
+            if [[ "$already_used" == false ]]; then
+                remaining_tags+=("$tag")
+            fi
+        done
+        
+        # Clean up temp file
+        rm -f "$matching_projects_file"
+        
+        _describe 'tags' remaining_tags
     }
     
     compdef _ptag_zsh ptag
