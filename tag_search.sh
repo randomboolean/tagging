@@ -22,7 +22,7 @@ ptag() {
     find ~/Projects -maxdepth 2 -name ".tags" -exec grep -l "^$1$" {} \; 2>/dev/null | while read -r file; do
         project_dir=$(dirname "$file")
         project_name=$(basename "$project_dir")
-        tags=$(cat "$file" | tr '\n' ' ')
+        tags=$(cat "$file" | tr '\n' ' ' | sed 's/[[:space:]]*$//')
         echo "$project_name|$tags"
     done | sort | while IFS='|' read -r project_name tags; do
         echo "  📁 $project_name ($tags)"
@@ -64,7 +64,30 @@ ptag-and() {
         done
         
         if $all_present; then
-            tags=$(cat "$file" | tr '\n' ' ')
+            tags=$(cat "$file" | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+            echo "$project_name|$tags"
+        fi
+    done | sort | while IFS='|' read -r project_name tags; do
+        echo "  📁 $project_name ($tags)"
+    done
+}
+
+# Search projects NOT tagged with a specific tag
+ptag-not() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: ptag-not <tag>"
+        echo "This will list projects that do NOT have the specified tag."
+        return
+    fi
+    
+    echo "Projects NOT tagged with '$1':"
+    find ~/Projects -maxdepth 2 -name ".tags" | while read -r file; do
+        project_dir=$(dirname "$file")
+        project_name=$(basename "$project_dir")
+        
+        # Check if the tag is NOT present
+        if ! grep -q "^$1$" "$file"; then
+            tags=$(cat "$file" | tr '\n' ' ' | sed 's/[[:space:]]*$//')
             echo "$project_name|$tags"
         fi
     done | sort | while IFS='|' read -r project_name tags; do
@@ -148,6 +171,7 @@ if [[ -n "${BASH_VERSION:-}" ]]; then
     }
     
     complete -F _ptag_completion ptag
+    complete -F _ptag_completion ptag-not
     complete -F _ptag_and_completion ptag-and
 fi
 
@@ -219,5 +243,6 @@ if [[ -n "${ZSH_VERSION:-}" ]]; then
     }
     
     compdef _ptag_zsh ptag
+    compdef _ptag_zsh ptag-not
     compdef _ptag_and_zsh ptag-and
 fi
