@@ -23,6 +23,8 @@ ptag() {
         project_dir=$(dirname "$file")
         project_name=$(basename "$project_dir")
         tags=$(cat "$file" | tr '\n' ' ')
+        echo "$project_name|$tags"
+    done | sort | while IFS='|' read -r project_name tags; do
         echo "  📁 $project_name ($tags)"
     done
 }
@@ -63,8 +65,10 @@ ptag-and() {
         
         if $all_present; then
             tags=$(cat "$file" | tr '\n' ' ')
-            echo "  📁 $project_name ($tags)"
+            echo "$project_name|$tags"
         fi
+    done | sort | while IFS='|' read -r project_name tags; do
+        echo "  📁 $project_name ($tags)"
     done
 }
 
